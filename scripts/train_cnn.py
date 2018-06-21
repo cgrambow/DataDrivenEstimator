@@ -37,6 +37,9 @@ def parse_command_line_arguments():
     parser.add_argument('--save_tensors_dir', metavar='DIR',
                         help='Location to save tensors on disk (frees up memory)')
 
+    parser.add_argument('--load_in_mem', type=int, default=1000,
+                        help='Number of data points to keep in memory (should be greater than batch_size)')
+
     parser.add_argument('--keep_tensors', action='store_true',
                         help='Do not delete directory containing tensors at end of job')
 
@@ -138,6 +141,7 @@ if __name__ == '__main__':
     out_dir = args.out_dir
     normalize = args.normalize
     save_tensors_dir = args.save_tensors_dir
+    load_in_mem = args.load_in_mem
     keep_tensors = args.keep_tensors
     folds = args.folds
     training_ratio = args.train_ratio
@@ -183,7 +187,8 @@ if __name__ == '__main__':
                              patience=patience,
                              training_ratio=training_ratio,
                              testing_ratio=testing_ratio,
-                             pretrained_weights=weights_file)
+                             pretrained_weights=weights_file,
+                             load_in_mem=load_in_mem)
     elif train_mode == 'keras':
         predictor.kfcv_batch_train(folds=folds, batch_size=batch_size,
                                    nb_epoch=nb_epoch,
@@ -198,6 +203,7 @@ if __name__ == '__main__':
                              nb_epoch=nb_epoch,
                              patience=patience,
                              training_ratio=training_ratio,
-                             testing_ratio=testing_ratio)
+                             testing_ratio=testing_ratio,
+                             load_in_mem=load_in_mem)
     else:
         raise Exception('Currently not supporting train mode: {0}'.format(train_mode))

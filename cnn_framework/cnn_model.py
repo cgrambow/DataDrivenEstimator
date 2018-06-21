@@ -66,7 +66,8 @@ def build_model(embedding_size=512, attribute_vector_size=33, depth=5,
 
 
 def train_model(model, X_train, y_train, X_inner_val, y_inner_val, X_test, y_test, X_outer_val=None, y_outer_val=None,
-                nb_epoch=0, batch_size=50, lr_func='0.01', patience=10, load_from_disk=False, save_model_path=None):
+                nb_epoch=0, batch_size=50, lr_func='0.01', patience=10, load_from_disk=False, save_model_path=None,
+                load_in_mem=1000):
     """
     Inputs:
         model - A Keras model
@@ -78,6 +79,8 @@ def train_model(model, X_train, y_train, X_inner_val, y_inner_val, X_test, y_tes
                 the validation loss
         load_from_disk - Data is not stored in memory, so load it from disk for each batch
                 X_train, etc. contain the file names in this case
+        load_in_mem - Number of data points to keep in memory when loading from disk
+                   (should be greater than batch_size)
 
     Outputs:
         model - a trained Keras model
@@ -109,32 +112,41 @@ def train_model(model, X_train, y_train, X_inner_val, y_inner_val, X_test, y_tes
             # Run through training set
             logging.info('Training with batch size: {0}...'.format(batch_size))
             epoch_training_start = time.time()
-            training_size = len(X_train)
-            batch_num = int(np.ceil(float(training_size) / batch_size))
 
+            training_size = len(X_train)
+            load_num = int(np.ceil(float(training_size) / load_in_mem))
             training_order = np.arange(training_size)
             np.random.shuffle(training_order)
-            for batch_idx in range(batch_num):
 
-                start = batch_idx * batch_size
-                end = min(start + batch_size, training_size)
-                idxs = training_order[start:end]
+            for load_idx in range(load_num):
+                start_load = load_idx * load_in_mem
+                end_load = min(start_load + load_in_mem, training_size)
+                idxs = training_order[start_load:end_load]
 
                 if isinstance(X_train, np.ndarray):
-                    X_train_batch = X_train[idxs]
+                    X_train_load = X_train[idxs]
                 else:
-                    X_train_batch = [X_train[idx] for idx in idxs]
+                    X_train_load = [X_train[idx] for idx in idxs]
                 if isinstance(y_train, np.ndarray):
-                    y_train_batch = y_train[idxs]
+                    y_train_load = y_train[idxs]
                 else:
-                    y_train_batch = [y_train[idx] for idx in idxs]
+                    y_train_load = [y_train[idx] for idx in idxs]
                 if load_from_disk:
-                    X_train_batch = [np.load(f) for f in X_train_batch]
+                    X_train_load = [np.load(f) for f in X_train_load]
 
-                single_mol_as_array = np.asarray(X_train_batch)
-                single_y_as_array = np.asarray(y_train_batch)
-                sloss = model.train_on_batch(single_mol_as_array, single_y_as_array)
-                this_loss.append(sloss)
+                load_size = len(X_train_load)
+                batch_num = int(np.ceil(float(load_size) / batch_size))
+
+                for batch_idx in range(batch_num):
+                    start_batch = batch_idx * batch_size
+                    end_batch = min(start_batch + batch_size, load_in_mem)
+                    X_train_batch = X_train_load[start_batch:end_batch]
+                    y_train_batch = y_train_load[start_batch:end_batch]
+
+                    single_mol_as_array = np.asarray(X_train_batch)
+                    single_y_as_array = np.asarray(y_train_batch)
+                    sloss = model.train_on_batch(single_mol_as_array, single_y_as_array)
+                    this_loss.append(sloss)
 
             epoch_training_end = time.time()
 

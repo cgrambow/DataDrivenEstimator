@@ -76,7 +76,8 @@ class Predictor(object):
                     self.datasets.append((host, db, table, float(testing_ratio)))
 
     def kfcv_train(self, folds, lr_func, save_model_path, pretrained_weights=None,
-                   batch_size=1, nb_epoch=150, patience=10, training_ratio=0.9, testing_ratio=0.0):
+                   batch_size=1, nb_epoch=150, patience=10, training_ratio=0.9, testing_ratio=0.0,
+                   load_in_mem=1000):
         # prepare data for training
         if self.get_data_from_file:
             folded_data = prepare_folded_data_from_file(
@@ -135,7 +136,8 @@ class Predictor(object):
                                              lr_func=lr_func,
                                              patience=patience,
                                              load_from_disk=True if self.save_tensors_dir is not None else False,
-                                             save_model_path=save_model_path)
+                                             save_model_path=save_model_path,
+                                             load_in_mem=load_in_mem)
 
             model, loss, inner_val_loss, mean_outer_val_loss, mean_test_loss = train_model_output
 
@@ -187,7 +189,8 @@ class Predictor(object):
                 shutil.rmtree(self.save_tensors_dir)
 
     def full_train(self, lr_func, save_model_path,
-                   batch_size=1, nb_epoch=150, patience=10, training_ratio=0.9, testing_ratio=0.0):
+                   batch_size=1, nb_epoch=150, patience=10, training_ratio=0.9, testing_ratio=0.0,
+                   load_in_mem=1000):
         # prepare data for training
         if self.get_data_from_file:
             split_data = prepare_full_train_data_from_file(
@@ -247,7 +250,8 @@ class Predictor(object):
                                          lr_func=lr_func,
                                          patience=patience,
                                          load_from_disk=True if self.save_tensors_dir is not None else False,
-                                         save_model_path=save_model_path)
+                                         save_model_path=save_model_path,
+                                         load_in_mem=load_in_mem)
 
         model, loss, inner_val_loss, mean_outer_val_loss, mean_test_loss = train_model_output
 
