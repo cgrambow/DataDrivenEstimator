@@ -23,6 +23,7 @@ class Predictor(object):
     def __init__(self, input_file=None, data_file=None, save_tensors_dir=None, keep_tensors=False, out_dir=None,
                  normalize=False):
         self.model = None
+        self.fpfun = None
         self.input_file = input_file
         self.data_file = data_file
         self.save_tensors_dir = save_tensors_dir
@@ -434,7 +435,7 @@ class Predictor(object):
             np.savez(fpath + '_mean_std.npz', mean=self.y_mean, std=self.y_std)
             logging.info('...saved y mean and standard deviation to {}_mean_std.npz'.format(fpath))
 
-    def predict(self, molecule=None, molecule_tensor=None, sigma=False):
+    def predict(self, molecule=None, molecule_tensor=None, sigma=False, fponly=False):
         """
         Predict the output given a molecule. If a tensor is specified, it
         overrides the molecule argument.
@@ -451,6 +452,10 @@ class Predictor(object):
             if self.padding:
                 molecule_tensor = pad_molecule_tensor(molecule_tensor, self.padding_final_size)
         molecule_tensor_array = np.array([molecule_tensor])
+
+        if fponly:
+            return self.fpfun([molecule_tensor_array])[0]
+
         if sigma:
             y_pred, y_sigma = self.model.predict(molecule_tensor_array, sigma=sigma)
             if self.y_mean is not None and self.y_std is not None:

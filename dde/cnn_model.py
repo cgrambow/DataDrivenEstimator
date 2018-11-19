@@ -11,6 +11,7 @@ import time
 
 import numpy as np
 
+from keras import backend as K
 from keras.models import Model
 from keras.layers import Input
 from keras.layers.core import Dense
@@ -33,7 +34,7 @@ def build_model(embedding_size=512, attribute_vector_size=33, depth=5,
                 dropout_rate_inner=0.0, dropout_rate_outer=0.0,
                 dropout_rate_hidden=0.0, dropout_rate_output=0.0,
                 n_model=None, padding_final_size=None,
-                freeze_mol_conv=False):
+                freeze_mol_conv=False, return_fpfun=False):
 
     """
     build generic cnn model that takes molecule tensor and predicts output
@@ -53,6 +54,7 @@ def build_model(embedding_size=512, attribute_vector_size=33, depth=5,
                      dropout_rate_outer=dropout_rate_outer,
                      padding_final_size=padding_final_size,
                      trainable=not freeze_mol_conv)(inputs)
+    fpfun = K.function([inputs], [x]) if return_fpfun else None
 
     logging.info('cnn_model: added MoleculeConv layer ({} -> {})'.format('mol', embedding_size))
     if hidden > 0:
@@ -86,7 +88,10 @@ def build_model(embedding_size=512, attribute_vector_size=33, depth=5,
     model.compile(loss=loss, optimizer=optimizer)
     logging.info(model.summary())
 
-    return model
+    if return_fpfun:
+        return model, fpfun
+    else:
+        return model
 
 
 def train_model(model, X_train, y_train, X_inner_val, y_inner_val, X_test, y_test, X_outer_val=None, y_outer_val=None,
