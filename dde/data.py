@@ -311,53 +311,38 @@ def prepare_full_train_data_from_file(datafile,
                                       save_meta=True,
                                       save_tensors_dir=None,
                                       testing_ratio=0.0,
-                                      meta_dir=None):
-    identifiers, y = [], []
-    with open(datafile) as df:
-        for line in df:
-            line_split = line.strip().split()
-            if line_split:
-                identifier = line_split[0]
-                ysingle = [float(yi) for yi in line_split[1:]]
-                identifiers.append(identifier)
-                y.append(ysingle)
-    y = np.array(y).astype(np.float32)
+                                      meta_dir=None,
+                                      test_datafile=None):
+
+    identifiers, y = _ident_and_y_data_loader_helper(datafile)
 
     logging.info('Loading data from {}...'.format(datafile))
-    if save_tensors_dir is not None:
-        if not os.path.exists(save_tensors_dir):
-            os.makedirs(save_tensors_dir)
+    X = _x_data_loader_helper(identifiers,
+                              save_tensors_dir=save_tensors_dir,
+                              add_extra_atom_attribute=add_extra_atom_attribute,
+                              add_extra_bond_attribute=add_extra_bond_attribute,
+                              differentiate_atom_type=differentiate_atom_type,
+                              differentiate_bond_type=differentiate_bond_type,
+                              padding=padding,
+                              padding_final_size=padding_final_size)
 
-        X = []
-        for fidx, identifier in enumerate(identifiers):
-            mol = str_to_mol(identifier)
-            x = get_molecule_tensor(mol,
-                                    add_extra_atom_attribute=add_extra_atom_attribute,
-                                    add_extra_bond_attribute=add_extra_bond_attribute,
-                                    differentiate_atom_type=differentiate_atom_type,
-                                    differentiate_bond_type=differentiate_bond_type,
-                                    padding=padding,
-                                    padding_final_size=padding_final_size)
-            fname = os.path.abspath(os.path.join(save_tensors_dir, '{}.npy'.format(fidx)))
-            np.save(fname, x)
-            X.append(fname)
+    if test_datafile is None:
+        logging.info('Splitting dataset with testing ratio of {}...'.format(testing_ratio))
+        split_data = split_test_from_train_and_val(X, y, extra_data=identifiers, testing_ratio=testing_ratio)
+        X_test, y_test, X_train, y_train, identifiers_test, identifiers_train = split_data
     else:
-        X = []
-        for identifier in identifiers:
-            mol = str_to_mol(identifier)
-            x = get_molecule_tensor(mol,
-                                    add_extra_atom_attribute=add_extra_atom_attribute,
-                                    add_extra_bond_attribute=add_extra_bond_attribute,
-                                    differentiate_atom_type=differentiate_atom_type,
-                                    differentiate_bond_type=differentiate_bond_type,
-                                    padding=padding,
-                                    padding_final_size=padding_final_size)
-            X.append(x)
-
-    logging.info('Splitting dataset with testing ratio of {}...'.format(testing_ratio))
-    split_data = split_test_from_train_and_val(X, y, extra_data=identifiers, testing_ratio=testing_ratio)
-
-    X_test, y_test, X_train, y_train, identifiers_test, identifiers_train = split_data
+        logging.info('Loading test data from {}...'.format(test_datafile))
+        split_data = split_test_from_train_and_val(X, y, extra_data=identifiers, testing_ratio=0.0)
+        _, _, X_train, y_train, _, identifiers_train = split_data
+        identifiers_test, y_test = _ident_and_y_data_loader_helper(test_datafile)
+        X_test = _x_data_loader_helper(identifiers_test,
+                                       save_tensors_dir=os.path.join(save_tensors_dir, 'test'),  # Don't overwrite
+                                       add_extra_atom_attribute=add_extra_atom_attribute,
+                                       add_extra_bond_attribute=add_extra_bond_attribute,
+                                       differentiate_atom_type=differentiate_atom_type,
+                                       differentiate_bond_type=differentiate_bond_type,
+                                       padding=padding,
+                                       padding_final_size=padding_final_size)
 
     if save_meta:
         identifiers_test_string = '\n'.join(identifiers_test)
@@ -372,6 +357,42 @@ def prepare_full_train_data_from_file(datafile,
             f_in.write(identifiers_train_string)
     
     return X_test, y_test, X_train, y_train
+
+
+def _ident_and_y_data_loader_helper(datafile):
+    identifiers, y = [], []
+    with open(datafile) as df:
+        for line in df:
+            line_split = line.strip().split()
+            if line_split:
+                identifier = line_split[0]
+                ysingle = [float(yi) for yi in line_split[1:]]
+                identifiers.append(identifier)
+                y.append(ysingle)
+    y = np.array(y).astype(np.float32)
+    return identifiers, y
+
+
+def _x_data_loader_helper(identifiers, save_tensors_dir=None, **kwargs):
+    if save_tensors_dir is not None:
+        if not os.path.exists(save_tensors_dir):
+            os.makedirs(save_tensors_dir)
+
+        X = []
+        for fidx, identifier in enumerate(identifiers):
+            mol = str_to_mol(identifier)
+            x = get_molecule_tensor(mol, **kwargs)
+            fname = os.path.abspath(os.path.join(save_tensors_dir, '{}.npy'.format(fidx)))
+            np.save(fname, x)
+            X.append(fname)
+    else:
+        X = []
+        for identifier in identifiers:
+            mol = str_to_mol(identifier)
+            x = get_molecule_tensor(mol, **kwargs)
+            X.append(x)
+
+    return X
 
 
 @attr('helper')

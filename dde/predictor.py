@@ -208,7 +208,8 @@ class Predictor(object):
                 shutil.rmtree(self.save_tensors_dir)
 
     def full_train(self, lr_func, save_model_path,
-                   batch_size=1, nb_epoch=150, patience=10, training_ratio=0.9, testing_ratio=0.0):
+                   batch_size=1, nb_epoch=150, patience=10, training_ratio=0.9, testing_ratio=0.0,
+                   test_datafile=None):
         # prepare data for training
         if self.get_data_from_file:
             split_data = prepare_full_train_data_from_file(
@@ -221,7 +222,8 @@ class Predictor(object):
                 padding_final_size=self.padding_final_size,
                 save_tensors_dir=self.save_tensors_dir,
                 testing_ratio=testing_ratio,
-                meta_dir=self.out_dir
+                meta_dir=self.out_dir,
+                test_datafile=test_datafile
             )
         else:
             split_data = prepare_full_train_data_from_multiple_datasets(

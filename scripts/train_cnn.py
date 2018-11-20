@@ -29,6 +29,9 @@ def parse_command_line_arguments():
                         help='A file specifying which datasets to train on. Alternatively, a space-separated .csv file'
                              ' with SMILES/InChI and output(s) in the first and subsequent columns, respectively.')
 
+    parser.add_argument('-td', '--test_data', metavar='FILE',
+                        help='A file containing separate test data (only works with full_train)')
+
     parser.add_argument('-o', '--out_dir', metavar='DIR', default=os.getcwd(),
                         help='Output directory')
 
@@ -139,6 +142,7 @@ if __name__ == '__main__':
     input_file = args.input
     weights_file = args.weights
     data_file = args.data
+    test_datafile = args.test_data
     out_dir = args.out_dir
     normalize = args.normalize
     save_tensors_dir = args.save_tensors_dir
@@ -207,6 +211,7 @@ if __name__ == '__main__':
                              nb_epoch=nb_epoch,
                              patience=patience,
                              training_ratio=training_ratio,
-                             testing_ratio=testing_ratio)
+                             testing_ratio=testing_ratio,
+                             test_datafile=test_datafile)
     else:
         raise Exception('Currently not supporting train mode: {0}'.format(train_mode))
