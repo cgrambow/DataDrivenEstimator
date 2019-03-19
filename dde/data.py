@@ -16,7 +16,12 @@ def str_to_mol(s):
     if s.startswith('InChI'):
         mol = Molecule().fromInChI(s, backend='rdkit-first')
     else:
-        mol = Molecule().fromSMILES(s, backend='rdkit-first')
+        try:
+            mol = Molecule().fromSMILES(s, backend='rdkit-first')
+        except Exception:
+            mol = Molecule().fromSMILES(s)
+            if not isinstance(mol, Molecule):
+                raise
     return mol
 
 
